@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Stalcraft Assistant (Alpha v3)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #1c1c1c;
+      color: #f1f1f1;
+    }
+    header {
+      background: #2b2b2b;
+      padding: 10px;
+      display: flex;
+      justify-content: space-around;
+    }
+    header button {
+      background: #3c3f41;
+      border: none;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    header button:hover {
+      background: #555;
+    }
+    .tab {
+      display: none;
+      padding: 20px;
+    }
+    .active {
+      display: block;
+    }
+    .goal {
+      margin: 5px 0;
+    }
+    input, textarea {
+      background: #2b2b2b;
+      border: 1px solid #555;
+      color: white;
+      padding: 5px;
+      border-radius: 3px;
+    }
+    .btn {
+      margin-top: 5px;
+      background: #444;
+      border: none;
+      padding: 5px 10px;
+      color: white;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #666;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 8px;
+      text-align: center;
+    }
+    /* Карта */
+    #mapContainer {
+      position: relative;
+      display: inline-block;
+    }
+    #mapImage {
+      max-width: 100%;
+      border: 2px solid #444;
+    }
+    .marker {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: red;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+    }
+    .marker:hover::after {
+      content: attr(data-note);
+      position: absolute;
+      top: -25px;
+      left: 20px;
+      background: #333;
+      padding: 3px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button onclick="openTab('goals')">🎯 Цели</button>
+    <button onclick="openTab('resources')">📊 Ресурсы</button>
+    <button onclick="openTab('map')">🗺 Карта</button>
+    <button onclick="openTab('notes')">📖 Заметки</button>
+  </header>
+
+  <!-- Вкладка Цели -->
+  <div id="goals" class="tab active">
+    <h2>🎯 Цели</h2>
+    <div id="goalList"></div>
+    <input type="text" id="goalInput" placeholder="Новая цель">
+    <button class="btn" onclick="addGoal()">Добавить</button>
+  </div>
+
+  <!-- Вкладка Ресурсы -->
+  <div id="resources" class="tab">
+    <h2>📊 Калькулятор ресурсов</h2>
+    <input type="text" id="resName" placeholder="Название ресурса">
+    <input type="number" id="resHave" placeholder="Есть">
+    <input type="number" id="resNeed" placeholder="Нужно">
+    <button class="btn" onclick="addResource()">Добавить</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Ресурс</th>
+          <th>Есть</th>
+          <th>Нужно</th>
+          <th>Осталось</th>
+          <th>Удалить</th>
+        </tr>
+      </thead>
+      <tbody id="resTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Вкладка Карта -->
+  <div id="map" class="tab">
+    <h2>🗺 Карта зоны</h2>
+    <p>Кликните по карте, чтобы добавить метку. Наведите на неё, чтобы увидеть заметку.</p>
+    <div id="mapContainer">
+      <!-- ⚠️ Замените src на картинку зоны Stalcraft -->
+      <img id="mapImage" src="https://i.ibb.co/7v3FJfD/sample-map.jpg" alt="Карта зоны">
+    </div>
+  </div>
+
+  <!-- Вкладка Заметки -->
+  <div id="notes" class="tab">
+    <h2>📖 Заметки</h2>
+    <textarea id="notesArea" rows="10" cols="50" placeholder="Ваши заметки..."></textarea><br>
+    <button class="btn" onclick="saveNotes()">Сохранить</button>
+  </div>
+
+  <script>
+    // Навигация
+    function openTab(tabName) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+    }
+
+    // --- Цели ---
+    let goals = JSON.parse(localStorage.getItem("goals")) || [];
+
+    function renderGoals() {
+      const goalList = document.getElementById("goalList");
+      goalList.innerHTML = "";
+      goals.forEach((goal, index) => {
+        const div = document.createElement("div");
+        div.className = "goal";
+        div.innerHTML = `
+          <input type="checkbox" ${goal.done ? "checked" : ""} onchange="toggleGoal(${index})">
+          <span>${goal.text}</span>
+          <button class="btn" onclick="deleteGoal(${index})">❌</button>
+        `;
+        goalList.appendChild(div);
+      });
+      localStorage.setItem("goals", JSON.stringify(goals));
+    }
+
+    function addGoal() {
+      const input = document.getElementById("goalInput");
+      if (input.value.trim() !== "") {
+        goals.push({ text: input.value.trim(), done: false });
+        input.value = "";
+        renderGoals();
+      }
+    }
+
+    function toggleGoal(index) {
+      goals[index].done = !goals[index].done;
+      renderGoals();
+    }
+
+    function deleteGoal(index) {
+      goals.splice(index, 1);
+      renderGoals();
+    }
+
+    renderGoals();
+
+    // --- Ресурсы ---
+    let resources = JSON.parse(localStorage.getItem("resources")) || [];
+
+    function renderResources() {
+      const table = document.getElementById("resTable");
+      table.innerHTML = "";
+      resources.forEach((res, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${res.name}</td>
+          <td>${res.have}</td>
+          <td>${res.need}</td>
+          <td>${res.need - res.have > 0 ? res.need - res.have : 0}</td>
+          <td><button class="btn" onclick="deleteResource(${index})">❌</button></td>
+        `;
+        table.appendChild(row);
+      });
+      localStorage.setItem("resources", JSON.stringify(resources));
+    }
+
+    function addResource() {
+      const name = document.getElementById("resName").value.trim();
+      const have = parseInt(document.getElementById("resHave").value) || 0;
+      const need = parseInt(document.getElementById("resNeed").value) || 0;
+
+      if (name && need > 0) {
+        resources.push({ name, have, need });
+        document.getElementById("resName").value = "";
+        document.getElementById("resHave").value = "";
+        document.getElementById("resNeed").value = "";
+        renderResources();
+      }
+    }
+
+    function deleteResource(index) {
+      resources.splice(index, 1);
+      renderResources();
+    }
+
+    renderResources();
+
+    // --- Заметки ---
+    const notesArea = document.getElementById("notesArea");
+    notesArea.value = localStorage.getItem("notes") || "";
+
+    function saveNotes() {
+      localStorage.setItem("notes", notesArea.value);
+      alert("Заметки сохранены!");
+    }
+
+    // --- Карта ---
+    let markers = JSON.parse(localStorage.getItem("markers")) || [];
+    const mapContainer = document.getElementById("mapContainer");
+    const mapImage = document.getElementById("mapImage");
+
+    function renderMarkers() {
+      document.querySelectorAll(".marker").forEach(m => m.remove());
+      markers.forEach((m, index) => {
+        const marker = document.createElement("div");
+        marker.className = "marker";
+        marker.style.left = m.x + "%";
+        marker.style.top = m.y + "%";
+        marker.setAttribute("data-note", m.note);
+        marker.onclick = () => {
+          if (confirm("Удалить метку?")) {
+            markers.splice(index, 1);
+            saveMarkers();
+            renderMarkers();
+          }
+        };
+        mapContainer.appendChild(marker);
+      });
+    }
+
+    function saveMarkers() {
+      localStorage.setItem("markers", JSON.stringify(markers));
+    }
+
+    mapImage.addEventListener("click", e => {
+      const rect = mapImage.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      const note = prompt("Введите описание метки:");
+      if (note) {
+        markers.push({ x, y, note });
+        saveMarkers();
+        renderMarkers();
+      }
+    });
+
+    renderMarkers();
+  </script>
+</body>
+</html>
